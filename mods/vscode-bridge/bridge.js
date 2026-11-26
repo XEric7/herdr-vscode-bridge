@@ -1,7 +1,19 @@
 import { appHome, exec, hc, home, notify, readTextFile, window as appWindow } from "herdr";
+import { BridgeError, labels } from "./messages.js";
 import { filePath, sshAuthority, targetUri, wslAuthority } from "./paths.js";
+import { finishWindowsFocus, prepareWindowsFocus } from "./windows-focus.js";
 
 const identityFiles = ["/proc/sys/kernel/random/boot_id", "/etc/machine-id"];
+
+/** Reads the optional language preference for this installation. */
+export async function useChinese() {
+  const config = await readTextFile(`${appHome()}/mods/vscode-bridge/locale.json`).catch(() => null);
+  try {
+    return JSON.parse(config)?.language === "zh-CN";
+  } catch {
+    return false;
+  }
+}
 
 /** Reads a verified boot and machine ID pair from the result of cat, or null. */
 function linuxIdentity(result) {
@@ -42,7 +54,7 @@ async function destination(machine, path, platform) {
       return { windows: false, authority: wslAuthority(override.wsl) };
     }
     if (typeof override?.ssh === "string") return { windows, authority: sshAuthority(override.ssh) };
-    throw new Error(`请检查 authorities.json 中 ${machine} 的 wsl 或 ssh 配置。`);
+    throw new BridgeError(`Check the wsl or ssh setting for ${machine} in authorities.json.`, `请检查 authorities.json 中 ${machine} 的 wsl 或 ssh 配置。`);
   }
 
   if (platform === "windows" && !windows) {
@@ -50,10 +62,10 @@ async function destination(machine, path, platform) {
     if (distro) return { windows: false, authority: wslAuthority(distro) };
   }
   const result = await hc(["machine", "ls", "--json"]);
-  if (result.code !== 0) throw new Error("Herdr 无法读取机器列表。");
+  if (result.code !== 0) throw new BridgeError("Herdr could not read the machine list.", "Herdr 无法读取机器列表。");
   const entry = JSON.parse(result.stdout).machines?.find((item) => item.name === machine);
   if (!entry?.target || entry.via) {
-    throw new Error(`无法自动识别 ${machine}，请在 authorities.json 中配置 wsl 或 ssh。`);
+    throw new BridgeError(`Could not identify ${machine}. Set wsl or ssh in authorities.json.`, `无法自动识别 ${machine}，请在 authorities.json 中配置 wsl 或 ssh。`);
   }
   return { windows, authority: sshAuthority(entry.target) };
 }
@@ -77,7 +89,7 @@ async function launch(uri, folder, hasLine, platform) {
   if (platform === "windows") {
     // Only fixed flags and a percent-encoded URI can enter this PowerShell string.
     // Start Code.exe directly so paths never pass through the code.cmd batch shim.
-    if (!/^[a-z\d:/.%_~+\-]+$/i.test(uri)) throw new Error("VS Code URI 包含无效字符。");
+    if (!/^[a-z\d:/.%_~+\-]+$/i.test(uri)) throw new BridgeError("The VS Code URI contains invalid characters.", "VS Code URI 包含无效字符。");
     const script = `
 $ErrorActionPreference = 'Stop'
 $exe = (Get-Command Code.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
@@ -94,7 +106,11 @@ if (-not $exe) {
 }
 if ($exe) {
   Remove-Item Env:ELECTRON_RUN_AS_NODE, Env:VSCODE_IPC_HOOK_CLI -ErrorAction SilentlyContinue
-  Start-Process -FilePath $exe -ArgumentList '${args.join(" ")}'
+  $openUri = '${uri}'
+  ${folder ? "" : "$handoffDeadline = [DateTime]::UtcNow.AddMilliseconds(300)"}
+  $launchedCode = Start-Process -FilePath $exe -ArgumentList '${args.join(" ")}'${folder ? "" : " -PassThru"}
+  ${folder ? "" : prepareWindowsFocus}
+  ${folder ? "" : finishWindowsFocus}
 } else {
   ${url ? `Start-Process -FilePath '${url}'` : "throw 'Code.exe was not found. Add the VS Code installation directory to PATH.'"}
 }`;
@@ -105,12 +121,16 @@ if ($exe) {
       result = await exec(platform === "macos" ? "open" : "xdg-open", [url], { timeout: 4000 });
     }
   }
-  if (result?.code !== 0) throw new Error(result?.stderr.trim() || "VS Code 启动失败。");
+  if (result?.code !== 0) {
+    const details = result?.stderr.trim();
+    if (details) throw new Error(details);
+    throw new BridgeError("Could not start VS Code.", "VS Code 启动失败。");
+  }
 }
 
 /** Opens the focused terminal's cwd or the fallback space folder on its source machine. */
 export async function openFolder(path, machine) {
-  if (!path) throw new Error("当前终端和空间都没有可用的工作目录。");
+  if (!path) throw new BridgeError("The terminal and space have no working directory.", "当前终端和空间都没有可用的工作目录。");
   const platform = appWindow()?.platform;
   const target = await destination(machine, path, platform);
   await launch(targetUri(path, target), true, false, platform);
@@ -133,6 +153,8 @@ export async function openFile(link, source) {
 }
 
 /** Shows the reason a launch failed in Herdr's notification area. */
-export function showError(error) {
-  notify({ title: "无法在 VS Code 中打开", body: error?.message ?? String(error), level: "error" });
+export async function showError(error) {
+  const chinese = await useChinese();
+  const message = chinese && error instanceof BridgeError ? error.chinese : (error?.message ?? String(error));
+  notify({ title: labels(chinese).failed, body: message, level: "error" });
 }

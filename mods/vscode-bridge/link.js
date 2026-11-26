@@ -6,7 +6,7 @@ export async function handleLink({ link, source }) {
   try {
     await openFile(link, source);
   } catch (error) {
-    showError(error);
+    await showError(error);
   }
   return "handled";
 }

@@ -3,6 +3,8 @@
 param(
     [string]$HerdrHome = $(if ($env:HERDR_APP_HOME) { $env:HERDR_APP_HOME } else { Join-Path $HOME '.config/herdr-app' }),
     [string]$HerdrApp = 'herdr-app',
+    [ValidateSet('en', 'zh-CN')]
+    [string]$Language = 'en',
     [switch]$Activate
 )
 
@@ -58,6 +60,9 @@ $stagedMod = Join-Path $HerdrHome "mods/.$modName.$suffix"
 $stagedLayout = "$layoutPath.$suffix"
 $stagedKeys = "$keysPath.$suffix"
 Copy-Item -LiteralPath $source -Destination $stagedMod -Recurse
+if ($Language -eq 'zh-CN') {
+    [IO.File]::WriteAllText((Join-Path $stagedMod 'locale.json'), '{"language":"zh-CN"}', $utf8)
+}
 [IO.File]::WriteAllText($stagedLayout, $layoutJson + [Environment]::NewLine, $utf8)
 [IO.File]::WriteAllText($stagedKeys, $keysJson + [Environment]::NewLine, $utf8)
 Move-Item -LiteralPath $stagedMod -Destination $modPath

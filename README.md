@@ -1,26 +1,28 @@
 # Herdr VS Code Bridge
 
-在 Herdr Desktop 中点击 **用 VS Code 打开** 或按 **Ctrl+Shift+G**，即可打开焦点终端的工作目录。终端没有报告目录时，使用当前空间的目录。也可以从命令面板运行 **Open in VS Code**。
+[简体中文](README.zh-CN.md)
 
-**Ctrl+点击**终端中的文件链接会在 VS Code 中打开文件，并保留 Herdr 识别到的行号和列号，例如 `./src/main.js:12:4`。macOS 使用 Cmd+点击。
+Click **Open in VS Code** or press **Ctrl+Shift+G** in Herdr Desktop to open the focused terminal's working directory. If the terminal has no reported directory, the bridge uses the active space's folder. You can also run **Open in VS Code** from the command palette.
 
-## Windows 安装
+**Ctrl-click** a terminal file link to open it in VS Code with the line and column detected by Herdr, for example `./src/main.js:12:4`. On macOS, use Cmd-click. On Windows, the bridge attempts to activate the selected editor window. If Windows blocks keyboard focus, it attempts to show the matching window above Herdr. [Windows foreground behavior (Chinese)](docs/windows-foreground.md)
 
-需要支持 `link_handlers` 的 Herdr Desktop（已验证 0.1.18）和本机 VS Code。使用远程环境时，在本机 VS Code 安装 Microsoft 的 WSL 或 Remote - SSH 扩展。
+## Install on Windows
 
-先打开 Herdr，然后在仓库目录运行：
+You need Herdr Desktop with `link_handlers` support (tested on 0.1.18) and a local VS Code installation. For remote work, install Microsoft's WSL or Remote - SSH extension in your local VS Code.
+
+Open Herdr and run this command from the repository:
 
 ```powershell
 .\Install.ps1 -Activate
 ```
 
-如果 `herdr-app` 不在 PATH，传入 `-HerdrApp 'C:\path\to\herdr-app.exe'`。安装脚本从已安装版本的官方 `layouts/main.json` 创建 `main-vscode-bridge`，加入底部按钮和文件链接处理器，并给新布局单独绑定快捷键。去掉 `-Activate` 可以稍后在 Settings 中切换。
+If `herdr-app` is missing from PATH, pass `-HerdrApp 'C:\path\to\herdr-app.exe'`. The installer copies the shipped `main` layout to `main-vscode-bridge`, adds the button and file link handler, and binds the shortcut in that layout. Omit `-Activate` to switch layouts later from Settings. English is the default. Pass `-Language zh-CN` for the Chinese interface.
 
-## 手动安装或更新
+## Install or update manually
 
-1. 将 `mods/vscode-bridge` 复制到 Herdr 应用目录的 `mods/`。应用目录默认为 `~/.config/herdr-app`，也可以用 `HERDR_APP_HOME` 指定。更新时覆盖 Mod 的源码文件，保留自己的 `authorities.json`。
-2. 用命令面板复制官方 `main` 布局为 `main-vscode-bridge`，在新布局的根对象中添加 `"link_handlers": ["vscode-bridge"]`。如果已有该字段，将 Mod 名加入列表。
-3. 在新布局的列或行内加入按钮块。以下示例适合放在列的底部。
+1. Copy `mods/vscode-bridge` to `mods/` in your Herdr app home. The default is `~/.config/herdr-app`. You can set `HERDR_APP_HOME` to use a different location. When updating, keep any local `authorities.json` and `locale.json`.
+2. From the command palette, clone the shipped `main` layout as `main-vscode-bridge`. Add `"link_handlers": ["vscode-bridge"]` to the root of the copy. If the field already exists, append the mod name to the list.
+3. Add the button block to a row or column in the new layout. This example fits at the bottom of a column.
 
    ```json
    {
@@ -31,7 +33,7 @@
    }
    ```
 
-4. 在 `keys.json` 中合并快捷键，然后切换到新布局。macOS 可用 `cmd-shift-g`。
+4. Merge the shortcut into `keys.json` and switch to the new layout. On macOS, you can use `cmd-shift-g`.
 
    ```json
    {
@@ -41,19 +43,21 @@
    }
    ```
 
-5. 运行 `herdr-app check <应用目录>/mods/vscode-bridge`，并通过 `herdr-app status` 查看运行时错误。
+5. Run `herdr-app check <app-home>/mods/vscode-bridge` and use `herdr-app status` to check for runtime errors.
 
-## 机器与窗口
+To switch the interface to Simplified Chinese, create `locale.json` in the installed mod directory with `{"language":"zh-CN"}`. The command palette entry remains **Open in VS Code**.
 
-| 终端来源 | VS Code 目标 |
+## Machines and workspaces
+
+| Terminal source | VS Code target |
 | --- | --- |
-| 本机 Windows | 本地文件系统 |
-| 同一台 Windows 上的 WSL2 | 通过运行中的发行版与终端机器核对 Linux 启动 ID 和机器 ID，唯一匹配时使用原生 `wsl+` authority |
-| Herdr 的 Remote SSH 机器 | 使用 Herdr 登记的 SSH 连接目标生成 `ssh-remote+` authority |
+| Local Windows | Local filesystem |
+| WSL2 on the same Windows computer | Native `wsl+` authority when exactly one running distribution matches the terminal's Linux boot ID and machine ID |
+| A Herdr machine connected over SSH | `ssh-remote+` authority from the SSH target registered in Herdr |
 
-请把 WSL2 或 SSH 作为独立的 Herdr 机器连接。直接在本地终端里输入 `wsl` 或 `ssh` 后，Herdr 的 Mod API 可能仍把终端标记为本机。
+Connect WSL2 or SSH as a separate Herdr machine. When you run `wsl` or `ssh` inside a local terminal, the Herdr Mod API can still report that terminal as local.
 
-如果自动匹配不到 WSL、使用了自定义 `--via`，或 VS Code 需要使用另一个 SSH 别名，可以在安装后的 Mod 目录创建 `authorities.json`。键是 Herdr 机器名，值选择 `wsl` 或 `ssh`。SSH 别名需在 VS Code 的 SSH 配置中可用。
+If WSL detection fails, you use a custom `--via` transport, or VS Code needs a different SSH alias, create `authorities.json` in the installed mod directory. Each key names a Herdr machine and its value supplies the WSL distribution or the SSH alias that VS Code can use.
 
 ```json
 {
@@ -62,14 +66,14 @@
 }
 ```
 
-文件打开交由 VS Code 按 authority 和路径选择工作区。已有匹配工作区时可复用，结果也受 VS Code 的窗口设置影响。路径以编码后的 URI 交给 VS Code，支持空格和 Unicode。终端能否识别链接由 Herdr 决定。带空格的路径如果无法识别为整段，可由输出程序用 OSC 8 生成单个 `file:` 链接。Herdr 0.1.18 的 `file:` 链接不提供行列号，也跳过部分裸文件名和反斜杠文本路径。
+VS Code selects a window using the remote authority, resource path, and its window settings. It can reuse an existing matching workspace. The bridge encodes paths as URIs, including spaces and Unicode. For paths with spaces that Herdr does not detect as a single link, the terminal application can emit an OSC 8 `file:` link. Herdr 0.1.18 provides no coordinates for `file:` links and skips some plain filenames and backslash paths.
 
-Mod 仅在 Herdr 界面内响应用户操作。它不修改 Agent Prompt，不安装 Skill，没有常驻进程和额外运行时依赖。
+The mod runs in the Herdr interface and needs no background service or additional runtime dependency. It leaves agent prompts and skills untouched.
 
-## 开发验证
+## Development checks
 
-有 Node.js 22.7 或更新版本时，可以运行 `node --test tests/paths.test.mjs`，检查路径编码、诊断坐标和远程 authority。再用 `herdr-app check mods/vscode-bridge` 检查 Mod 清单和初始视图。
+With Node.js 22.7 or later, run `node --test tests/paths.test.mjs` to check path encoding, diagnostic coordinates, remote authorities, and language messages. Run `herdr-app check mods/vscode-bridge` to validate the manifest and initial view.
 
-- [Herdr Mod 开发指南](https://github.com/herdrdev/herdr-app/blob/v0.1.18/defaults/AGENTS.md)
+- [Herdr Mod developer guide](https://github.com/herdrdev/herdr-app/blob/v0.1.18/defaults/AGENTS.md)
 - [VS Code CLI](https://code.visualstudio.com/docs/configure/command-line)
-- [VS Code Remote SSH URI](https://code.visualstudio.com/docs/remote/troubleshooting#_connect-to-a-remote-host-from-the-terminal)
+- [VS Code Remote SSH URIs](https://code.visualstudio.com/docs/remote/troubleshooting#_connect-to-a-remote-host-from-the-terminal)

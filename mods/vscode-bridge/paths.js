@@ -1,3 +1,5 @@
+import { BridgeError } from "./messages.js";
+
 /** Encodes one path or authority segment using only URI-safe characters. */
 function encode(value) {
   return encodeURIComponent(value).replace(/[!'()*]/g, (char) =>
@@ -7,7 +9,7 @@ function encode(value) {
 /** Builds a Remote SSH authority for the OpenSSH target, including user and port. */
 export function sshAuthority(target) {
   if (!target || /^-|[\s\x00-\x1f]/u.test(target)) {
-    throw new Error("无效的 SSH 目标，请在 authorities.json 中配置 SSH Host。");
+    throw new BridgeError("Invalid SSH target. Set an SSH host in authorities.json.", "无效的 SSH 目标，请在 authorities.json 中配置 SSH Host。");
   }
   if (/^[a-z0-9._-]+$/.test(target)) return `ssh-remote+${target}`;
   const hex = encodeURIComponent(JSON.stringify({ hostName: target }))
@@ -27,11 +29,11 @@ export function filePath(link, cwd, userHome, windows) {
   let path = link.raw;
   if (/^file:/i.test(path)) {
     const uri = /^file:\/\/(?<host>[^/?#]*)(?<path>\/[^?#]*)(?:[?#].*)?$/i.exec(path);
-    if (!uri) throw new Error("无法解析此文件 URI。");
+    if (!uri) throw new BridgeError("Invalid file URI.", "无法解析此文件 URI。");
     const host = uri.groups.host;
     path = decodeURIComponent(uri.groups.path);
     if (host && host.toLowerCase() !== "localhost") {
-      if (!windows || !/^[a-z0-9._-]+$/i.test(host)) throw new Error("无法识别此文件 URI 的主机。");
+      if (!windows || !/^[a-z0-9._-]+$/i.test(host)) throw new BridgeError("Unsupported host in file URI.", "无法识别此文件 URI 的主机。");
       return `//${host}${path}`;
     }
     return windows && /^\/[a-z]:\//i.test(path) ? path.slice(1) : path;
@@ -45,7 +47,7 @@ export function filePath(link, cwd, userHome, windows) {
   if (path.startsWith("~/") && userHome) return `${userHome}/${path.slice(2)}`;
   if (windows && path.startsWith("/") && /^[a-z]:/i.test(cwd ?? "")) return `${cwd.slice(0, 2)}${path}`;
   if (!cwd || !path || path.startsWith("~") || (windows && /^(?:\/|[a-z]:)/i.test(path))) {
-    throw new Error("无法从这个终端确定文件的绝对路径。");
+    throw new BridgeError("Could not determine the absolute path from this terminal.", "无法从这个终端确定文件的绝对路径。");
   }
   return `${cwd}/${path}`;
 }
@@ -53,19 +55,19 @@ export function filePath(link, cwd, userHome, windows) {
 /** Converts an absolute path to a VS Code CLI URI, with optional editor coordinates. */
 export function targetUri(path, { authority, windows }, line, column) {
   if (windows) path = path.replaceAll("\\", "/");
-  if (!path || /[\x00-\x1f\x7f]/u.test(path)) throw new Error("路径为空或含有控制字符。");
+  if (!path || /[\x00-\x1f\x7f]/u.test(path)) throw new BridgeError("The path is empty or contains control characters.", "路径为空或含有控制字符。");
   let drive = "";
   let host = "";
   if (windows && /^[a-z]:\//i.test(path)) {
     drive = `/${path.slice(0, 2)}`;
     path = path.slice(2);
   } else if (windows && path.startsWith("//")) {
-    if (authority) throw new Error("当前不支持远程 Windows 的 UNC 路径。");
+    if (authority) throw new BridgeError("UNC paths on remote Windows machines are unsupported.", "当前不支持远程 Windows 的 UNC 路径。");
     const unc = /^\/\/([a-z0-9._-]+)(\/.+)$/i.exec(path);
-    if (!unc) throw new Error("无法识别此 UNC 路径。");
+    if (!unc) throw new BridgeError("Invalid UNC path.", "无法识别此 UNC 路径。");
     [, host, path] = unc;
   } else if (windows || !path.startsWith("/")) {
-    throw new Error("VS Code 需要绝对路径。");
+    throw new BridgeError("VS Code requires an absolute path.", "VS Code 需要绝对路径。");
   }
 
   const prefix = authority ? `vscode-remote://${authority}` : `file://${host}`;

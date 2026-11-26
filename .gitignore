@@ -1,4 +1,5 @@
 authorities.json
+locale.json
 *.error
 jsconfig.json
 gpui-kit.d.ts

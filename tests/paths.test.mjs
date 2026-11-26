@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { BridgeError, labels } from "../mods/vscode-bridge/messages.js";
 import { filePath, sshAuthority, targetUri, wslAuthority } from "../mods/vscode-bridge/paths.js";
 
 test("preserves coordinates and encodes spaces, Unicode, and shell metacharacters", () => {
@@ -24,8 +25,15 @@ test("handles remote file URIs, home-relative links, and line ranges", () => {
   assert.equal(filePath({ raw: "file:///home/me/a%20b" }, null, null, false), "/home/me/a b");
   assert.equal(filePath({ raw: "~/a#L5-L8", line: 5 }, null, "/home/me", false), "/home/me/a");
   assert.equal(targetUri("/home/me/a b", { authority: wslAuthority("Ubuntu Demo") }), "vscode-remote://wsl+Ubuntu%20Demo/home/me/a%20b");
-  assert.throws(() => filePath({ raw: "./a" }, null, null, false), /绝对路径/);
-  assert.throws(() => targetUri("/tmp/a\n", {}), /控制字符/);
+  assert.throws(() => filePath({ raw: "./a" }, null, null, false), /absolute path/);
+  assert.throws(() => targetUri("/tmp/a\n", {}), /control characters/);
+});
+
+test("keeps English as the default and provides Chinese interface messages", () => {
+  assert.equal(labels().open, "Open in VS Code");
+  assert.equal(labels(true).open, "用 VS Code 打开");
+  assert.throws(() => targetUri("relative", {}), (error) =>
+    error instanceof BridgeError && /absolute path/.test(error.message) && /绝对路径/.test(error.chinese));
 });
 
 test("preserves SSH aliases with case or connection qualifiers", () => {
