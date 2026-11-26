@@ -1,0 +1,5 @@
+{
+  "layout:main-vscode-bridge": {
+    "ctrl-shift-g": "mod.open:vscode-bridge"
+  }
+}

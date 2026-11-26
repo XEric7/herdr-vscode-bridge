@@ -2,6 +2,8 @@
 
 Click **Open in VS Code** on the Herdr status bar to open the current folder. Press **Ctrl+Shift+G** to do the same from the keyboard, or Ctrl-click a terminal path to go to a file and its detected line and column.
 
+![VS Code Bridge in Herdr](preview.png)
+
 ## What you see
 
 The button sits at the right edge of the shipped Herdr status bar in a 132-pixel block. It uses the current theme's chrome, foreground, and hover colors. The command palette and shortcut show a small progress dialog while opening the folder. The interface defaults to English and offers Simplified Chinese.

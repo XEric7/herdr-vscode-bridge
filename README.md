@@ -6,6 +6,8 @@ Click **Open in VS Code** or press **Ctrl+Shift+G** in Herdr Desktop to open the
 
 **Ctrl-click** a terminal file link to open it in VS Code with the line and column detected by Herdr, for example `./src/main.js:12:4`. On macOS, use Cmd-click. On Windows, the bridge attempts to activate the selected editor window. If Windows blocks keyboard focus, it attempts to show the matching window above Herdr. [Windows foreground behavior (Chinese)](docs/windows-foreground.md)
 
+![VS Code Bridge in Herdr](preview.png)
+
 ## Install on Windows
 
 You need Herdr Desktop with `link_handlers` support (tested on 0.1.18) and a local VS Code installation. For remote work, install Microsoft's WSL or Remote - SSH extension in your local VS Code.
