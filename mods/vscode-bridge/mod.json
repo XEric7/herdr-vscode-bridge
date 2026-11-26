@@ -1,0 +1,9 @@
+{
+  "title": "Open in VS Code",
+  "place": "none",
+  "overlay": { "kind": "dialog", "width": 360, "height": 88 },
+  "palette": [
+    { "title": "Open in VS Code", "command": "mod.open", "args": { "name": "vscode-bridge" }, "words": "editor folder" }
+  ],
+  "link_handlers": [{ "kind": "file", "pattern": "." }]
+}
